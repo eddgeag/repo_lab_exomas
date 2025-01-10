@@ -70,55 +70,8 @@ fi
 echo "Referencia: $REFERENCE"
 echo "Índices: $REFERENCE.bwt, $REFERENCE.amb, $REFERENCE.ann, $REFERENCE.pac, $REFERENCE.sa"
 
-
-
-perform_fastqc() {
-    local input_dir="$1"   # Directorio donde están los archivos de entrada
-    local output_dir="$2"  # Directorio donde se guardarán los resultados
-
-    # Validar si se proporcionaron los parámetros obligatorios
-    if [[ -z "$input_dir" || -z "$output_dir" ]]; then
-        echo "Uso: perform_fastqc <input_dir> <output_dir>"
-        return 1
-    fi
-
-    # Crear directorio de salida si no existe
-    if [[ ! -d "$output_dir" ]]; then
-        mkdir -p "$output_dir"
-    fi
-
-    # Buscar archivos con extensiones válidas
-    local extensions=("*.fq.gz" "*.fastq.gz" "*.fq" "*.fastq")
-    local files=()
-
-    for ext in "${extensions[@]}"; do
-        files+=($(find "$input_dir" -type f -name "$ext"))
-    done
-
-    # Verificar si se encontraron archivos
-    if [[ ${#files[@]} -eq 0 ]]; then
-        echo "No se encontraron archivos con extensiones válidas en $input_dir."
-        return 1
-    fi
-
-    # Ejecutar FastQC
-    echo "Realizando control de calidad con FastQC..."
-    for file in "${files[@]}"; do
-        echo "Procesando archivo: $file"
-        fastqc -t 4 "$file" -o "$output_dir"
-        if [[ $? -ne 0 ]]; then
-            echo "Error al procesar $file con FastQC."
-            return 1
-        fi
-    done
-
-    echo "Control de calidad completado. Resultados guardados en $output_dir."
-    return 0
-}
-
-
-# Función para alinear
-align_sample() {
+# Función para procesar una muestra
+process_sample() {
     local DIR="$1"
     echo "$1"
     local SAMPLE=$(basename "$DIR")
@@ -289,25 +242,5 @@ export REFERENCE
 export THREADS
 export MAIN_DIR
 export GATK_PATH_BASE  
-
-
 # Procesar cada carpeta en paralelo
-# Caso 1: Procesar un directorio específico
-if [[ -n "$DIR" ]]; then
-    if [[ -d "$DIR" ]]; then
-        echo "Procesando directorio específico: $DIR"
-        process_sample "$DIR"
-        
-    else
-        echo "El directorio $DIR no existe."
-        exit 1
-    fi
-fi
-
-# Caso 2: Buscar y procesar muestras específicas
-if [[ -n "$SAMPLE_NAME" ]]; then
-    for SAMPLE_DIR in $(find "$MAIN_DIR" -type d -name "$SAMPLE_NAME"); do
-        echo "Procesando muestra específica: $SAMPLE_DIR"
-        process_sample "$SAMPLE_DIR"
-    done
-fi
+find $MAIN_DIR -type d -name "DX0*-*" | parallel -j $THREADS process_sample {}
