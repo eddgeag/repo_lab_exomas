@@ -71,22 +71,18 @@ echo "Referencia: $REFERENCE"
 echo "Índices: $REFERENCE.bwt, $REFERENCE.amb, $REFERENCE.ann, $REFERENCE.pac, $REFERENCE.sa"
 
 
-
 perform_fastqc() {
     local input_dir="$1"   # Directorio donde están los archivos de entrada
-    local output_dir="$2"  # Directorio donde se guardarán los resultados
 
     # Validar si se proporcionaron los parámetros obligatorios
-    if [[ -z "$input_dir" || -z "$output_dir" ]]; then
-        echo "Uso: perform_fastqc <input_dir> <output_dir>"
+    if [[ -z "$input_dir" ]]; then
+        echo "Uso: perform_fastqc <input_dir>"
         return 1
     fi
-
-    # Crear directorio de salida si no existe
-    if [[ ! -d "$output_dir" ]]; then
-        mkdir -p "$output_dir"
-    fi
-
+     
+    OUTPUT_DIR="$input_dir/pipeline_output"
+    mkdir -p $OUTPUT_DIR
+    
     # Buscar archivos con extensiones válidas
     local extensions=("*.fq.gz" "*.fastq.gz" "*.fq" "*.fastq")
     local files=()
@@ -100,7 +96,8 @@ perform_fastqc() {
         echo "No se encontraron archivos con extensiones válidas en $input_dir."
         return 1
     fi
-
+    $output_dir_FQ="$OUTPUT_DIR/QC"
+    mkdir $output_dir
     # Ejecutar FastQC
     echo "Realizando control de calidad con FastQC..."
     for file in "${files[@]}"; do
@@ -296,7 +293,8 @@ export GATK_PATH_BASE
 if [[ -n "$DIR" ]]; then
     if [[ -d "$DIR" ]]; then
         echo "Procesando directorio específico: $DIR"
-        process_sample "$DIR"
+        perform_fastqc "$MAIN_DIR"
+        align_sample "$MAIN_DIR"
         
     else
         echo "El directorio $DIR no existe."
@@ -308,6 +306,7 @@ fi
 if [[ -n "$SAMPLE_NAME" ]]; then
     for SAMPLE_DIR in $(find "$MAIN_DIR" -type d -name "$SAMPLE_NAME"); do
         echo "Procesando muestra específica: $SAMPLE_DIR"
-        process_sample "$SAMPLE_DIR"
+        perform_fastqc "$SAMPLE_DIR"
+        align_sample "$SAMPLE_DIR"
     done
 fi
